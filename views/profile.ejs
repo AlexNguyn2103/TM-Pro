@@ -1,0 +1,153 @@
+<%- include('partials/header') %>
+<%- include('partials/navbar') %>
+<div class="container" style="padding-top:2rem;padding-bottom:4rem">
+  <div style="max-width:560px;margin:0 auto">
+    <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
+      <h1 class="page-title" style="margin-bottom:0">👤 Hồ sơ cá nhân</h1>
+      <form action="/auth/logout" method="POST" style="margin:0">
+        <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--red);border-color:rgba(239,68,68,0.3)">↩ Đăng xuất</button>
+      </form>
+    </div>
+    <% if (locals.flash) { %><div class="flash flash-<%= flashType %>"><%= flashType==='success'?'✅':'⚠️' %> <%= flash %></div><% } %>
+
+    <!-- Avatar card -->
+    <div class="card card-glow-brown mb-3" style="text-align:center;padding:2rem">
+      <div class="avatar avatar-xl" style="background:<%= profileUser.avatar_color %>;margin:0 auto 1rem">
+        <%= (profileUser.display_name||profileUser.username)[0].toUpperCase() %>
+      </div>
+      <h2 style="color:var(--text-bright)"><%= profileUser.display_name %></h2>
+      <p class="text-dim">@<%= profileUser.username %></p>
+      <p class="text-dim text-small mt-1">Tham gia: <%= new Date(profileUser.created_at).toLocaleDateString('vi-VN') %></p>
+      <div style="margin-top:0.6rem">
+        <span class="badge badge-green"><%= profileUser.role === 'admin' ? '⚙️ Admin' : '👤 Thành viên' %></span>
+      </div>
+    </div>
+
+    <!-- Appearance -->
+    <div class="card mb-3">
+      <div class="card-header"><span class="card-title">🎨 Giao diện</span></div>
+      <div class="form-group">
+        <label class="form-label">Chế độ hiển thị</label>
+        <div style="display:flex;gap:0.6rem">
+          <button type="button" class="btn btn-ghost btn-sm" id="setThemeDark">🌙 Tối</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="setThemeLight">☀️ Sáng</button>
+        </div>
+      </div>
+      <form action="/profile/accent" method="POST">
+        <div class="form-group" style="margin-top:0.8rem">
+          <label class="form-label">Màu chủ đề</label>
+          <div style="display:flex;gap:0.8rem;align-items:center">
+            <input type="color" name="accent_color" class="form-control" value="<%= profileUser.accent_color || '#b45309' %>" style="height:44px;width:80px;padding:4px"/>
+            <button type="submit" class="btn btn-primary btn-sm">💾 Lưu màu</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Edit profile -->
+    <div class="card mb-3">
+      <div class="card-header"><span class="card-title">✏️ Chỉnh sửa hồ sơ</span></div>
+      <form action="/profile/update" method="POST">
+        <div class="form-group">
+          <label class="form-label">Tên hiển thị</label>
+          <input type="text" name="display_name" class="form-control" value="<%= profileUser.display_name||'' %>" required/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" name="email" class="form-control" value="<%= profileUser.email||'' %>"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Màu avatar</label>
+          <div style="display:flex;gap:0.8rem;align-items:center;flex-wrap:wrap">
+            <% ['#004b87','#ff00cc','#9600ff','#22c55e','#f59e0b','#f97316','#0ea5e9','#ef4444'].forEach(function(c) { %>
+              <label style="cursor:pointer">
+                <input type="radio" name="avatar_color" value="<%= c %>" <%= profileUser.avatar_color===c?'checked':'' %> style="display:none" class="color-radio"/>
+                <div class="avatar" style="background:<%= c %>;width:36px;height:36px;font-size:0.8rem;transition:all 0.2s;border:3px solid <%=profileUser.avatar_color===c?'white':'transparent'%>">
+                  <%= (profileUser.display_name||'U')[0].toUpperCase() %>
+                </div>
+              </label>
+            <% }); %>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">💾 Lưu thay đổi</button>
+      </form>
+    </div>
+
+    <!-- Change password -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">🔒 Đổi mật khẩu</span></div>
+      <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:1.2rem">Mật khẩu mới phải có ít nhất 6 ký tự.</p>
+      <form action="/profile/change-password" method="POST" id="changePassForm">
+        <div class="form-group">
+          <label class="form-label">Mật khẩu hiện tại</label>
+          <div style="position:relative">
+            <input type="password" name="current_password" id="curPass" class="form-control" required placeholder="••••••••" style="padding-right:2.8rem"/>
+            <button type="button" onclick="togglePwd('curPass',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1.1rem">👁</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mật khẩu mới</label>
+          <div style="position:relative">
+            <input type="password" name="new_password" id="newPass" class="form-control" required placeholder="••••••••" style="padding-right:2.8rem"/>
+            <button type="button" onclick="togglePwd('newPass',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1.1rem">👁</button>
+          </div>
+          <div id="pwdStrength" style="margin-top:4px;font-size:0.78rem"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Xác nhận mật khẩu mới</label>
+          <div style="position:relative">
+            <input type="password" name="confirm_new_password" id="cfmPass" class="form-control" required placeholder="••••••••" style="padding-right:2.8rem"/>
+            <button type="button" onclick="togglePwd('cfmPass',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1.1rem">👁</button>
+          </div>
+          <div id="matchMsg" style="margin-top:4px;font-size:0.78rem"></div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">🔐 Đổi mật khẩu</button>
+      </form>
+    </div>
+
+  </div>
+</div>
+<script>
+function togglePwd(id, btn) {
+  var el = document.getElementById(id);
+  if (el.type === 'password') { el.type = 'text'; btn.textContent = '🙈'; }
+  else { el.type = 'password'; btn.textContent = '👁'; }
+}
+document.getElementById('setThemeDark').addEventListener('click', function() { setTheme('dark'); });
+document.getElementById('setThemeLight').addEventListener('click', function() { setTheme('light'); });
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', '/profile/theme', true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.send(JSON.stringify({theme: t}));
+}
+var newPassEl = document.getElementById('newPass');
+var cfmPassEl = document.getElementById('cfmPass');
+var pwdStrengthEl = document.getElementById('pwdStrength');
+var matchMsgEl = document.getElementById('matchMsg');
+var strengthLabel = ['','⬜ Rất yếu','🟥 Yếu','🟧 Trung bình','🟨 Khá mạnh','🟩 Mạnh'];
+var strengthColor = ['','#ef4444','#f97316','#f59e0b','#22c55e','#16a34a'];
+newPassEl.addEventListener('input', function() {
+  var v = newPassEl.value;
+  var s = 0;
+  if (v.length >= 6) s++;
+  if (v.length >= 10) s++;
+  if (/[A-Z]/.test(v)) s++;
+  if (/[0-9]/.test(v)) s++;
+  if (/[^A-Za-z0-9]/.test(v)) s++;
+  pwdStrengthEl.textContent = v ? strengthLabel[Math.min(s,5)] : '';
+  pwdStrengthEl.style.color = v ? strengthColor[Math.min(s,5)] : '';
+  checkMatch();
+});
+cfmPassEl.addEventListener('input', checkMatch);
+function checkMatch() {
+  if (!cfmPassEl.value) { matchMsgEl.textContent = ''; return; }
+  if (newPassEl.value === cfmPassEl.value) {
+    matchMsgEl.textContent = '✅ Mật khẩu khớp'; matchMsgEl.style.color = 'var(--primary-dark)';
+  } else {
+    matchMsgEl.textContent = '❌ Mật khẩu chưa khớp'; matchMsgEl.style.color = 'var(--red)';
+  }
+}
+</script>
+<%- include('partials/footer') %>

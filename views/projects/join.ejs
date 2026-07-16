@@ -1,0 +1,26 @@
+<%- include('../partials/header') %>
+<%- include('../partials/navbar') %>
+<div class="container" style="padding-top:2rem;padding-bottom:4rem">
+  <div style="max-width:480px;margin:0 auto">
+    <div class="page-header">
+      <h1 class="page-title">🔗 Tham gia dự án</h1>
+      <p class="text-dim">Nhập mã mời từ nhóm trưởng</p>
+    </div>
+    <% if (flash) { %><div class="flash flash-<%= flashType %>"><%= flashType==='success'?'✅':'⚠️' %> <%= flash %></div><% } %>
+    <div class="card card-glow-purple">
+      <form action="/projects/join" method="POST">
+        <div class="form-group">
+          <label class="form-label">Mã mời dự án</label>
+          <input type="text" name="invite_code" class="form-control mono" 
+                 placeholder="VD: AB12CD34" 
+                 style="font-size:1.3rem;letter-spacing:0.2em;text-transform:uppercase"
+                 maxlength="8" required autocomplete="off"/>
+          <p style="font-size:0.8rem;color:var(--text-dim);margin-top:0.4rem">Mã gồm 8 ký tự in hoa</p>
+        </div>
+        <button type="submit" class="btn btn-brown btn-block btn-lg">🚀 Gửi yêu cầu tham gia</button>
+      </form>
+    </div>
+    <div style="text-align:center;margin-top:1rem"><a href="/projects/new" class="text-dim">← Hoặc tạo dự án mới</a></div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

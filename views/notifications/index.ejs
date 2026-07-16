@@ -1,0 +1,52 @@
+<%- include('../partials/header') %>
+<%- include('../partials/navbar') %>
+
+<div class="container" style="padding-top:1.5rem;padding-bottom:4rem;max-width:800px">
+  <div class="d-flex align-center justify-between mb-3" style="flex-wrap:wrap;gap:1rem">
+    <div>
+      <h1 style="color:var(--primary-dark);font-size:1.6rem">🔔 Thông báo của bạn</h1>
+      <p class="text-dim">Cập nhật mọi tiến độ công việc và hoạt động từ nhóm.</p>
+    </div>
+    <% if (allNotifications && allNotifications.some(n => !n.is_read)) { %>
+      <form action="/notifications/read-all" method="POST">
+        <button type="submit" class="btn btn-primary">✓ Đánh dấu tất cả đã đọc</button>
+      </form>
+    <% } %>
+  </div>
+
+  <div class="card p-0">
+    <% if (!allNotifications || allNotifications.length === 0) { %>
+      <div class="empty-state" style="padding:4rem 2rem">
+        <div class="empty-state-icon" style="font-size:3rem;margin-bottom:1rem">🔕</div>
+        <p style="font-size:1.1rem;color:var(--text-bright);font-weight:600">Bạn chưa có thông báo nào</p>
+        <p style="color:var(--text-dim);font-size:0.9rem">Hãy tham gia dự án để bắt đầu nhận thông báo mới nhé.</p>
+      </div>
+    <% } else { %>
+      <div style="display:flex;flex-direction:column">
+        <% allNotifications.forEach(n => { %>
+          <a href="/notifications/<%= n.id %>" class="notif-item <%= n.is_read ? '' : 'unread' %>" style="display:block;text-decoration:none;padding:1.2rem;border-bottom:1px solid var(--card-border);transition:var(--transition);background:<%= n.is_read ? 'transparent' : 'rgba(34,197,94,0.04)' %>">
+            <div class="d-flex align-center justify-between" style="margin-bottom:0.4rem">
+              <div style="font-weight:700;color:var(--text-bright);font-size:1rem;display:flex;align-items:center;gap:8px">
+                <% if (!n.is_read) { %><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--primary);box-shadow:var(--glow-green)"></span><% } %>
+                <%= n.title || 'Thông báo' %>
+              </div>
+              <div style="font-size:0.75rem;color:var(--text-dim);font-weight:500;white-space:nowrap">
+                <%= new Date(n.created_at).toLocaleString('vi-VN') %>
+              </div>
+            </div>
+            
+            <p style="color:var(--text);font-size:0.9rem;line-height:1.5;margin-bottom:0.6rem"><%= n.message %></p>
+            
+            <% if (n.project_name) { %>
+              <div style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:var(--bg3);border:1px solid rgba(0,0,0,0.05);border-radius:6px;font-size:0.75rem;color:var(--primary-dark);font-weight:600">
+                📁 <%= n.project_name %>
+              </div>
+            <% } %>
+          </a>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,11 @@
+<%- include('partials/header') %>
+<%- include('partials/navbar') %>
+<div class="container" style="padding-top:5rem;text-align:center">
+  <div style="font-size:6rem;font-family:'Orbitron',sans-serif;color:var(--pink);text-shadow:var(--glow-pink);line-height:1">
+    <%= code || '500' %>
+  </div>
+  <h2 style="color:var(--text-bright);margin:1rem 0 0.5rem"><%= title || 'Có lỗi xảy ra' %></h2>
+  <p style="color:var(--text-dim);margin-bottom:2rem"><%= message || 'Vui lòng thử lại sau.' %></p>
+  <a href="/dashboard" class="btn btn-brown">← Về Dashboard</a>
+</div>
+<%- include('partials/footer') %>

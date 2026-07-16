@@ -1,0 +1,292 @@
+<% const u = locals.currentUser; %>
+
+<!-- Sidebar -->
+<aside class="app-sidebar" id="appSidebar">
+  <!-- Brand -->
+  <a href="<%= u ? '/dashboard' : '/' %>" class="sidebar-brand" style="text-decoration:none">
+    <div class="sidebar-logo">🌿</div>
+    <div class="sidebar-brand-text">
+      19A-Teamly
+      <span>Quản lý nhóm</span>
+    </div>
+  </a>
+
+  <!-- Nav -->
+  <nav class="sidebar-nav">
+    <% if (u) { %>
+      <div class="sidebar-section">Menu chính</div>
+      <a href="/dashboard" class="sidebar-link <%= locals.title==='Dashboard'?'active':'' %>">
+        <span class="link-icon">🏠</span> Dashboard
+      </a>
+      <a href="/projects/new" class="sidebar-link">
+        <span class="link-icon">＋</span> Tạo dự án
+      </a>
+      <a href="/projects/join" class="sidebar-link">
+        <span class="link-icon">🔗</span> Tham gia dự án
+      </a>
+
+      <div class="sidebar-section" style="margin-top:0.5rem">Khám phá</div>
+      <a href="/guest" class="sidebar-link">
+        <span class="link-icon">🌐</span> Dự án công khai
+      </a>
+
+      <% if (u.role === 'admin') { %>
+        <div class="sidebar-section" style="margin-top:0.5rem">Quản trị</div>
+        <a href="/admin" class="sidebar-link">
+          <span class="link-icon">⚙️</span> Admin Panel
+        </a>
+      <% } %>
+
+      <!-- Notification bell -->
+      <div class="sidebar-section" style="margin-top:0.5rem">Thông báo</div>
+      <a href="/notifications" class="sidebar-link <%= locals.title==='Thông báo'?'active':'' %>">
+        <span class="link-icon">🔔</span>
+        Thông báo
+        <% if (locals.unreadCount > 0) { %>
+          <span class="notif-badge link-badge"><%= locals.unreadCount %></span>
+        <% } else if (locals.notifCount > 0) { %>
+          <span class="notif-badge link-badge"><%= locals.notifCount %></span>
+        <% } %>
+      </a>
+
+    <% } else { %>
+      <!-- Not logged in: show public nav -->
+      <div class="sidebar-section">Khám phá</div>
+      <a href="/" class="sidebar-link">
+        <span class="link-icon">🏠</span> Trang chủ
+      </a>
+      <a href="/guest" class="sidebar-link">
+        <span class="link-icon">🌐</span> Dự án công khai
+      </a>
+    <% } %>
+  </nav>
+
+  <!-- Footer: user info / auth buttons -->
+  <div class="sidebar-footer">
+    <% if (u) { %>
+      <a href="/profile" class="sidebar-user" style="text-decoration:none">
+        <div class="avatar" style="background:<%= u.avatarColor || '#22c55e' %>"><%= (u.displayName||u.username)[0].toUpperCase() %></div>
+        <div>
+          <div class="user-name"><%= u.displayName || u.username %></div>
+          <div class="user-role"><%= u.role === 'admin' ? '⚙️ Admin' : '👤 Thành viên' %></div>
+        </div>
+      </a>
+      <div class="sidebar-btn-row">
+        <a href="/profile" class="btn btn-ghost btn-sm">👤 Hồ sơ</a>
+        <form action="/auth/logout" method="POST" style="flex:1">
+          <button type="submit" class="btn btn-ghost btn-sm btn-block" style="color:var(--red)">↩ Đăng xuất</button>
+        </form>
+      </div>
+    <% } else { %>
+      <div class="sidebar-auth">
+        <div class="sidebar-auth-label">Chào mừng bạn!</div>
+        <!-- Login button that opens modal -->
+        <a href="/auth/login" class="btn-sidebar-login" id="sidebarLoginBtn">🔑 Đăng nhập</a>
+        <a href="/auth/register" class="btn-sidebar-login" style="background:linear-gradient(135deg,#16a34a,#15803d)">✨ Đăng ký</a>
+        <a href="/guest" class="btn-sidebar-guest">👀 Xem với tư cách khách</a>
+      </div>
+    <% } %>
+  </div>
+</aside>
+
+<!-- Mobile sidebar overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- Main content wrapper -->
+<div class="app-main">
+  <!-- Top bar (mobile hamburger + breadcrumb) -->
+  <div class="top-bar">
+    <button class="hamburger" id="hamburgerBtn" aria-label="Mở menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:0.9rem;font-weight:600;color:var(--primary-dark)">🌿 19A-Teamly</span>
+      <span style="color:var(--text-dim);font-size:0.8rem">/ <%= locals.title || '' %></span>
+    </div>
+    <% if (u) { %>
+    <div style="display:flex;align-items:center;gap:8px">
+      <a href="/profile" class="avatar-pill" style="text-decoration:none">
+        <div class="avatar" style="background:<%= u.avatarColor || '#22c55e' %>"><%= (u.displayName||u.username)[0].toUpperCase() %></div>
+        <span style="font-size:0.82rem;font-weight:600;color:var(--text-bright);display:none" id="topbarName"><%= u.displayName || u.username %></span>
+      </a>
+    </div>
+    <% } else { %>
+    <a href="/auth/login" class="btn btn-primary btn-sm">Đăng nhập</a>
+    <% } %>
+  </div>
+
+  <!-- Page content -->
+  <div class="page-content">
+
+<script>
+// Hamburger + sidebar toggle
+(function() {
+  const btn = document.getElementById('hamburgerBtn');
+  const sidebar = document.getElementById('appSidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  if (!btn) return;
+  function openSidebar() {
+    sidebar.classList.add('mobile-open');
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('mobile-open');
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  btn.addEventListener('click', function() {
+    if (sidebar.classList.contains('mobile-open')) closeSidebar();
+    else openSidebar();
+  });
+  overlay.addEventListener('click', closeSidebar);
+})();
+
+// Notification panel toggle removed as it's a dedicated page now
+
+// Confirm dialogs
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('[data-confirm]');
+  if (!btn) return;
+  const msg = btn.getAttribute('data-confirm');
+  if (!confirm(msg)) e.preventDefault();
+});
+
+// Modal open/close
+document.addEventListener('click', function(e) {
+  const openBtn = e.target.closest('[data-modal-open]');
+  if (openBtn) {
+    const id = openBtn.getAttribute('data-modal-open');
+    const el = document.getElementById(id);
+    if (el) el.classList.add('open');
+  }
+  const closeBtn = e.target.closest('[data-modal-close]');
+  if (closeBtn) {
+    const id = closeBtn.getAttribute('data-modal-close');
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('open');
+  }
+  // Click outside modal
+  if (e.target.classList.contains('modal-overlay')) {
+    e.target.classList.remove('open');
+  }
+});
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('open');
+}
+
+// Deadline countdown
+document.querySelectorAll('[data-deadline]').forEach(function(el) {
+  const d = new Date(el.getAttribute('data-deadline'));
+  const now = new Date();
+  const diff = d - now;
+  if (isNaN(d.getTime())) return;
+  if (diff < 0) {
+    const days = Math.abs(Math.floor(diff / 86400000));
+    el.textContent = 'Trễ ' + days + ' ngày';
+    el.style.color = 'var(--red)';
+    el.style.fontWeight = '600';
+  } else {
+    const days = Math.floor(diff / 86400000);
+    const hrs = Math.floor((diff % 86400000) / 3600000);
+    if (days === 0) el.textContent = 'Còn ' + hrs + ' giờ';
+    else el.textContent = 'Còn ' + days + ' ngày';
+    if (days < 2) { el.style.color = 'var(--gold)'; el.style.fontWeight = '600'; }
+  }
+});
+
+// Progress bars
+document.querySelectorAll('.progress-fill[data-pct]').forEach(function(el) {
+  setTimeout(function() { el.style.width = el.getAttribute('data-pct') + '%'; }, 100);
+});
+
+// Task filter pills
+document.querySelectorAll('.filter-pill[data-filter]').forEach(function(pill) {
+  pill.addEventListener('click', function() {
+    document.querySelectorAll('.filter-pill[data-filter]').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    const filter = pill.getAttribute('data-filter');
+    document.querySelectorAll('.task-card').forEach(function(card) {
+      if (filter === 'all' || card.getAttribute('data-filter-tag') === filter) {
+        card.style.display = '';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+    const empty = document.getElementById('tasksEmptyFilter');
+    if (empty) {
+      const visible = document.querySelectorAll('.task-card:not([style*="display: none"])').length;
+      empty.style.display = visible === 0 ? '' : 'none';
+    }
+  });
+});
+
+// Member filter
+document.querySelectorAll('.filter-pill[data-mfilter]').forEach(function(pill) {
+  pill.addEventListener('click', function() {
+    document.querySelectorAll('.filter-pill[data-mfilter]').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    const filter = pill.getAttribute('data-mfilter');
+    document.querySelectorAll('.member-row[data-mtags]').forEach(function(row) {
+      const tags = row.getAttribute('data-mtags') || '';
+      if (filter === 'all' || tags.includes(filter)) row.style.display = '';
+      else row.style.display = 'none';
+    });
+  });
+});
+
+// Kanban drag and drop
+(function() {
+  let dragging = null;
+  document.querySelectorAll('.kanban-card').forEach(function(card) {
+    card.addEventListener('dragstart', function() {
+      dragging = card;
+      setTimeout(() => card.classList.add('dragging'), 0);
+    });
+    card.addEventListener('dragend', function() {
+      card.classList.remove('dragging');
+      dragging = null;
+    });
+  });
+  document.querySelectorAll('.kanban-col').forEach(function(col) {
+    col.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      col.classList.add('drag-over');
+    });
+    col.addEventListener('dragleave', function() { col.classList.remove('drag-over'); });
+    col.addEventListener('drop', function(e) {
+      e.preventDefault();
+      col.classList.remove('drag-over');
+      if (!dragging) return;
+      const taskId = dragging.getAttribute('data-task-id');
+      const newStatus = col.getAttribute('data-status');
+      const projectId = window.PROJECT_ID;
+      if (!projectId || !taskId || !newStatus) return;
+      fetch('/projects/' + projectId + '/tasks/' + taskId + '/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      }).then(function(r) {
+        if (r.ok) { col.appendChild(dragging); }
+      }).catch(function() {});
+    });
+  });
+})();
+
+// copyText helper
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(function() {
+    const orig = btn.textContent;
+    btn.textContent = '✅ Đã sao chép';
+    setTimeout(function() { btn.textContent = orig; }, 1500);
+  }).catch(function() {});
+}
+
+// escHtml helper
+function escHtml(str) {
+  return String(str).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+</script>

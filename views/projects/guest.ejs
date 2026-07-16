@@ -1,0 +1,116 @@
+<%- include('../partials/header') %>
+<%- include('../partials/navbar', {notifications:[], unreadCount: 0}) %>
+<div class="container" style="padding-top:1.5rem;padding-bottom:4rem">
+  <!-- Project header -->
+  <div class="d-flex align-center justify-between mb-2" style="flex-wrap:wrap;gap:0.8rem">
+    <div>
+      <div style="display:flex;align-items:center;gap:0.8rem;flex-wrap:wrap">
+        <h1 style="font-size:1.5rem;color:var(--brown);text-shadow:var(--glow-brown)"><%= project.name %></h1>
+        <span class="badge badge-pink">👀 Guest View</span>
+        <% if (project.status === 'completed') { %>
+          <span class="badge badge-green">✅ Hoàn thành</span>
+        <% } else if (project.status === 'archived') { %>
+          <span class="badge badge-dim">📦 Lưu trữ</span>
+        <% } else { %>
+          <span class="badge badge-brown">🟢 Đang chạy</span>
+        <% } %>
+      </div>
+      <% if (project.description) { %><p style="color:var(--text-dim);font-size:0.9rem;margin-top:0.2rem"><%= project.description %></p><% } %>
+    </div>
+    <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+      <% if (project.deadline) { %>
+        <span style="font-size:0.85rem;color:var(--text-dim)">📅 <%= new Date(project.deadline).toLocaleDateString('vi-VN') %></span>
+      <% } %>
+      <% if (locals.currentUser) { %>
+        <a href="/dashboard" class="btn btn-primary btn-sm">Về Dashboard</a>
+      <% } else { %>
+        <a href="/auth/login" class="btn btn-ghost btn-sm">Đăng nhập</a>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <a href="#" class="tab-btn active" onclick="return false;">📊 Tổng quan</a>
+  </div>
+
+  <div class="fade-in">
+    <div class="stats-grid">
+      <div class="stat-card s-brown">
+        <div class="stat-number"><%= stats.totalTasks %></div>
+        <div class="stat-label">Tổng nhiệm vụ</div>
+      </div>
+      <div class="stat-card s-green">
+        <div class="stat-number"><%= stats.doneTasks %></div>
+        <div class="stat-label">Hoàn thành</div>
+      </div>
+      <div class="stat-card s-pink">
+        <div class="stat-number"><%= stats.memberCount %></div>
+        <div class="stat-label">Thành viên</div>
+      </div>
+      <div class="stat-card s-yellow">
+        <div class="stat-number"><%= stats.overdueTasks %></div>
+        <div class="stat-label">Trễ hạn</div>
+      </div>
+    </div>
+    <!-- Progress -->
+    <div class="card mb-3">
+      <div class="card-header"><span class="card-title">📊 Tiến độ dự án</span><span style="color:var(--brown);font-family:'Orbitron',sans-serif"><%= stats.progress %>%</span></div>
+      <div class="progress-wrap" style="height:18px"><div class="progress-fill" data-pct="<%= stats.progress %>" style="width:0"></div></div>
+      <p style="color:var(--text-dim);font-size:0.82rem;margin-top:0.6rem"><%= stats.doneTasks %> / <%= stats.totalTasks %> nhiệm vụ hoàn thành</p>
+    </div>
+
+    <!-- Gantt Chart for guests -->
+    <% if (roadmapItems && roadmapItems.length > 0) { %>
+      <div class="card mb-3">
+        <div class="card-header"><span class="card-title">🗺️ Lộ trình dự án (Gantt)</span></div>
+        <div class="gantt-container">
+          <% roadmapItems.forEach(r => { %>
+            <div class="gantt-row">
+              <div class="gantt-label">
+                <div style="font-weight:600;font-size:0.85rem;color:var(--text-bright)"><%= r.title.substring(0,20) %></div>
+                <div style="font-size:0.72rem;color:var(--text-dim)"><%= new Date(r.start_date).toLocaleDateString('vi-VN') %> → <%= new Date(r.end_date).toLocaleDateString('vi-VN') %></div>
+              </div>
+              <div class="gantt-track">
+                <div class="gantt-bar" 
+                  data-start="<%= r.start_date %>" 
+                  data-end="<%= r.end_date %>" 
+                  data-color="<%= r.color %>">
+                  <%= r.title.substring(0,16) %>
+                </div>
+              </div>
+              <span class="badge <%= {pending:'badge-dim',in_progress:'badge-brown',done:'badge-green'}[r.status] %>">
+                <%= {pending:'Chờ',in_progress:'Đang chạy',done:'✅ Xong'}[r.status] %>
+              </span>
+            </div>
+          <% }) %>
+        </div>
+      </div>
+    <% } %>
+
+    <!-- Members for guests -->
+    <% if (members && members.length > 0) { %>
+      <div class="card">
+        <div class="card-header"><span class="card-title">👥 Thành viên dự án</span></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1rem;">
+          <% members.forEach(m => { %>
+            <div class="member-row" style="margin:0;border:1px solid rgba(0,0,0,0.1);border-radius:8px;">
+              <div class="avatar" style="background:<%= m.avatar_color %>"><%= (m.display_name||'?')[0].toUpperCase() %></div>
+              <div class="member-info" style="flex:1">
+                <div class="member-name"><%= m.display_name %></div>
+                <% const rl = {leader:'👑 Nhóm trưởng',vice_leader:'⭐ Phó nhóm',member:'👤 Thành viên'}; %>
+                <div class="member-sub" style="margin-top:4px;">
+                  <span class="badge <%= {leader:'badge-brown',vice_leader:'badge-purple',member:'badge-dim',custom:'badge-pink'}[m.role]||'badge-dim' %>">
+                    <%= m.role==='custom'&&m.custom_role_name ? `🎯 ${m.custom_role_name}` : (rl[m.role]||m.role) %>
+                  </span>
+                </div>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

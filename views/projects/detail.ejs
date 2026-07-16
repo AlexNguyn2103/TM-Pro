@@ -1,0 +1,1120 @@
+<%- include('../partials/header') %>
+<%- include('../partials/navbar', {notifications:[], unreadCount: notifCount}) %>
+
+<%
+  const canEditTasksUI = locals.canEditTasks ?? canManage;
+  const canReviewSubmissionsUI = locals.canReviewSubmissions ?? canManage;
+%>
+
+<script>
+  window.PROJECT_ID = <%= project.id %>;
+  window.CURRENT_USER_ID = <%= currentUser ? currentUser.id : 'null' %>;
+</script>
+
+<div class="container" style="padding-top:1.5rem;padding-bottom:4rem">
+  <% if (flash) { %><div class="flash flash-<%= flashType %>"><%= flashType==='success'?'✅':'⚠️' %> <%= flash %></div><% } %>
+
+  <!-- Project header -->
+  <div class="d-flex align-center justify-between mb-2" style="flex-wrap:wrap;gap:0.8rem">
+    <div>
+      <div style="display:flex;align-items:center;gap:0.8rem;flex-wrap:wrap">
+        <h1 style="font-size:1.5rem;color:var(--brown);text-shadow:var(--glow-brown)"><%= project.name %></h1>
+        <% if (project.status === 'completed') { %>
+          <span class="badge badge-green">✅ Hoàn thành</span>
+        <% } else if (project.status === 'archived') { %>
+          <span class="badge badge-dim">📦 Lưu trữ</span>
+        <% } else { %>
+          <span class="badge badge-brown">🟢 Đang chạy</span>
+        <% } %>
+        <% if (memberInfo) { %>
+          <% const rl = {leader:'👑 Nhóm trưởng',vice_leader:'⭐ Phó nhóm',member:'👤 Thành viên'}; %>
+          <span class="badge <%= {leader:'badge-brown',vice_leader:'badge-purple',member:'badge-dim',custom:'badge-pink'}[memberInfo.role]||'badge-dim' %>">
+            <%= memberInfo.role==='custom'&&memberInfo.custom_role_name ? `🎯 ${memberInfo.custom_role_name}` : (rl[memberInfo.role]||memberInfo.role) %>
+          </span>
+        <% } %>
+      </div>
+      <% if (project.description) { %><p style="color:var(--text-dim);font-size:0.9rem;margin-top:0.2rem"><%= project.description %></p><% } %>
+    </div>
+    <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+      <% if (project.deadline) { %>
+        <span style="font-size:0.85rem;color:var(--text-dim)">📅 <%= new Date(project.deadline).toLocaleDateString('vi-VN') %></span>
+      <% } %>
+      <% if (canManage) { %><a href="/projects/<%= project.id %>?tab=settings" class="btn btn-ghost btn-sm">⚙️ Cài đặt</a><% } %>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <% const tabs = [
+      {id:'overview',  label:'📊 Tổng quan'},
+      {id:'tasks',     label:'📋 Nhiệm vụ'},
+      {id:'kanban',    label:'🗂️ Kanban'},
+      {id:'stats',     label:'📈 Thống kê'},
+      {id:'members',   label:'👥 Thành viên'},
+      {id:'roadmap',   label:'🗺️ Lộ trình'},
+      {id:'chat',      label:'💬 Chat nhóm'},
+      {id:'settings',  label:'⚙️ Cài đặt', hidden: !canManage}
+    ]; %>
+    <% tabs.forEach(t => { %>
+      <% if (!t.hidden) { %>
+        <a href="/projects/<%= project.id %>?tab=<%= t.id %>" class="tab-btn <%= tab===t.id?'active':'' %>"><%= t.label %></a>
+      <% } %>
+    <% }) %>
+  </div>
+
+  <!-- ═══════ OVERVIEW TAB ═══════ -->
+  <% if (tab === 'overview') { %>
+    <div class="fade-in">
+      <div class="stats-grid">
+        <div class="stat-card s-brown">
+          <div class="stat-number"><%= stats.totalTasks %></div>
+          <div class="stat-label">Tổng nhiệm vụ</div>
+        </div>
+        <div class="stat-card s-green">
+          <div class="stat-number"><%= stats.doneTasks %></div>
+          <div class="stat-label">Hoàn thành</div>
+        </div>
+        <div class="stat-card s-pink">
+          <div class="stat-number"><%= stats.memberCount %></div>
+          <div class="stat-label">Thành viên</div>
+        </div>
+        <div class="stat-card s-yellow">
+          <div class="stat-number"><%= stats.overdueTasks %></div>
+          <div class="stat-label">Trễ hạn</div>
+        </div>
+      </div>
+      <!-- Progress -->
+      <div class="card mb-3">
+        <div class="card-header"><span class="card-title">📊 Tiến độ dự án</span><span style="color:var(--brown);font-family:'Orbitron',sans-serif"><%= stats.progress %>%</span></div>
+        <div class="progress-wrap" style="height:18px"><div class="progress-fill" data-pct="<%= stats.progress %>" style="width:0"></div></div>
+        <p style="color:var(--text-dim);font-size:0.82rem;margin-top:0.6rem"><%= stats.doneTasks %> / <%= stats.totalTasks %> nhiệm vụ hoàn thành</p>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header"><span class="card-title">📄 Xuất báo cáo</span></div>
+        <div style="display:flex;gap:0.6rem;flex-wrap:wrap">
+          <a href="/projects/<%= project.id %>/export/pdf" class="btn btn-brown btn-sm">📕 Xuất PDF</a>
+          <a href="/projects/<%= project.id %>/export/excel" class="btn btn-green btn-sm" style="color:var(--green);border-color:var(--green)">📗 Xuất Excel</a>
+        </div>
+      </div>
+      <!-- My Tasks quick view -->
+      <% if (locals.myTasks && myTasks.length > 0) { %>
+        <div class="card mb-3">
+          <div class="card-header"><span class="card-title">📋 Nhiệm vụ của tôi</span><a href="/projects/<%= project.id %>?tab=tasks" class="btn btn-ghost btn-sm">Xem tất cả</a></div>
+          <% myTasks.slice(0,4).forEach(t => { %>
+            <div class="task-item priority-<%= t.priority %>" style="margin-bottom:0.5rem">
+              <div class="d-flex align-center justify-between">
+                <span style="font-weight:600"><%= t.title %></span>
+                <% const statusBadge = {todo:'badge-dim',in_progress:'badge-brown',submitted:'badge-yellow',approved:'badge-green',rejected:'badge-red'}; %>
+                <span class="badge <%= statusBadge[t.status]||'badge-dim' %>">
+                  <%= {todo:'Chưa làm',in_progress:'Đang làm',submitted:'Đã nộp',approved:'✅ Duyệt',rejected:'❌ Từ chối'}[t.status] %>
+                </span>
+              </div>
+              <% if (t.deadline) { %><div style="font-size:0.8rem" data-deadline="<%= t.deadline %>"></div><% } %>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+      <!-- Activity log -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">📜 Hoạt động gần đây</span></div>
+        <% if (!locals.recentActivity || recentActivity.length === 0) { %>
+          <p class="text-dim text-small">Chưa có hoạt động</p>
+        <% } else { %>
+          <% recentActivity.forEach(a => { %>
+            <div style="display:flex;gap:0.8rem;padding:0.5rem 0;border-bottom:1px solid rgba(0,245,255,0.05);font-size:0.85rem">
+              <span style="color:var(--text-dim);white-space:nowrap"><%= new Date(a.created_at).toLocaleString('vi-VN',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'}) %></span>
+              <span style="color:var(--brown)">·</span>
+              <span style="color:var(--text-bright)"><%= a.display_name || 'Hệ thống' %></span>
+              <span class="text-dim"><%= a.detail %></span>
+            </div>
+          <% }) %>
+        <% } %>
+      </div>
+    </div>
+
+  <!-- ═══════ TASKS TAB ═══════ -->
+  <% } else if (tab === 'tasks') { %>
+    <div class="fade-in">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem">
+        <h3 style="color:var(--brown);font-size:1rem;margin:0">Danh sách nhiệm vụ <span style="color:var(--text-dim);font-weight:400">(<%= (locals.tasks||[]).length %>)</span></h3>
+        <% if (canEditTasksUI) { %>
+          <button class="btn btn-brown btn-sm" data-modal-open="modalCreateTask">＋ Thêm nhiệm vụ</button>
+        <% } %>
+      </div>
+
+      <!-- Filter pills -->
+      <div class="filter-bar">
+        <button class="filter-pill active" data-filter="all">🗂️ Tất cả <span class="filter-count"><%= (locals.tasks||[]).length %></span></button>
+        <button class="filter-pill" data-filter="todo">📝 Chưa làm <span class="filter-count"><%= (locals.tasks||[]).filter(t=>t.status==='todo'||t.status==='rejected').length %></span></button>
+        <button class="filter-pill" data-filter="in_progress">🔄 Đang làm <span class="filter-count"><%= (locals.tasks||[]).filter(t=>t.status==='in_progress').length %></span></button>
+        <button class="filter-pill" data-filter="submitted">📨 Đã nộp <span class="filter-count"><%= (locals.tasks||[]).filter(t=>t.status==='submitted').length %></span></button>
+        <button class="filter-pill" data-filter="approved">✅ Hoàn thành <span class="filter-count"><%= (locals.tasks||[]).filter(t=>t.status==='approved').length %></span></button>
+        <button class="filter-pill" data-filter="overdue">⚠️ Trễ hạn <span class="filter-count"><%= (locals.tasks||[]).filter(t=>t.deadline&&new Date(t.deadline)<new Date()&&t.status!=='approved').length %></span></button>
+      </div>
+
+      <% if (!locals.tasks || tasks.length === 0) { %>
+        <div class="empty-state"><div class="empty-state-icon">📋</div><p>Chưa có nhiệm vụ nào</p></div>
+      <% } else { %>
+        <% tasks.forEach(t => {
+          const doneStatuses = ['approved','done','completed'];
+          const isOverdue = t.deadline && new Date(t.deadline) < new Date() && !doneStatuses.includes(t.status);
+          const isMyTask = currentUser && (!t.assigned_to || t.assigned_to.length === 0 || (Array.isArray(t.assigned_to) && t.assigned_to.includes(currentUser.id)));
+          const mySubStatus = t.my_submission_status;
+          const filterTag = isOverdue ? 'overdue' : t.status;
+          const hasConfirmed = t.confirmed_by && Array.isArray(t.confirmed_by) && currentUser && t.confirmed_by.includes(currentUser.id);
+          const isCreator = currentUser && t.created_by === currentUser.id;
+        %>
+          <div class="task-card priority-<%= t.priority %>" data-status="<%= t.status %>" data-filter-tag="<%= filterTag %>">
+            <!-- Task header row -->
+            <div class="task-card-header">
+              <div class="task-title-block">
+                <span class="task-title-text"><%= t.title %></span>
+                <% if (isOverdue) { %><span class="badge badge-red badge-sm">⚠️ Trễ hạn</span><% } %>
+              </div>
+              <div class="task-badges">
+                <% const prBadge = {urgent:'badge-red',high:'badge-pink',medium:'badge-yellow',low:'badge-dim'}; %>
+                <% const prLabel = {urgent:'🔴 Khẩn cấp',high:'🟠 Cao',medium:'🟡 TB',low:'⚪ Thấp'}; %>
+                <span class="badge <%= prBadge[t.priority] %>"><%= prLabel[t.priority] %></span>
+                <% const stBadge = {todo:'badge-dim',in_progress:'badge-brown',submitted:'badge-yellow',approved:'badge-green',rejected:'badge-red'}; %>
+                <% const stLabel = {todo:'Chưa làm',in_progress:'Đang làm',submitted:'📨 Đã nộp',approved:'✅ Hoàn thành',rejected:'❌ Từ chối'}; %>
+                <span class="badge <%= stBadge[t.status] %>"><%= stLabel[t.status] %></span>
+              </div>
+            </div>
+
+            <!-- Task info tags row (requires_submission) -->
+            <div class="task-info-row">
+              <% if (t.requires_submission) { %>
+                <span class="badge badge-needs-doc badge-sm">📎 Cần nộp tài liệu</span>
+              <% } else { %>
+                <span class="badge badge-no-doc badge-sm">✅ Không cần nộp tài liệu</span>
+              <% } %>
+              
+              <% if (hasConfirmed) { %>
+                <span class="badge badge-confirm badge-sm">✓ Đã nhận việc</span>
+              <% } %>
+            </div>
+
+            <!-- Meta row: assignee + deadline -->
+            <div class="task-meta-row">
+              <% if (t.assignee_name) { %>
+                <span class="task-meta-item">👤 <strong><%= t.assignee_name %></strong></span>
+              <% } else { %>
+                <span class="task-meta-item" style="color:var(--text-dim)">👥 Giao cho tất cả</span>
+              <% } %>
+              <% if (t.deadline) { %>
+                <span class="task-meta-item <%= isOverdue ? 'text-overdue' : '' %>">📅 <span data-deadline="<%= t.deadline %>"></span></span>
+              <% } %>
+            </div>
+
+            <!-- Description with bullet points -->
+            <% if (t.description) { %>
+              <div class="task-desc-block">
+                <% t.description.split('\n').forEach(line => { if(line.trim()) { %>
+                  <div class="task-desc-line"><span class="task-bullet">▸</span><%= line.trim() %></div>
+                <% }}) %>
+              </div>
+            <% } %>
+
+            <!-- Action row -->
+            <div class="task-actions">
+              <div style="flex:1"></div>
+              
+              <!-- Task confirmation for 'todo' state -->
+              <% if (isMyTask && t.status === 'todo' && !hasConfirmed) { %>
+                <form action="/projects/<%= project.id %>/tasks/<%= t.id %>/confirm" method="POST" style="display:inline">
+                  <button type="submit" class="btn btn-primary btn-sm">👍 Xác nhận nhận nhiệm vụ</button>
+                </form>
+              <% } %>
+
+              <!-- Submission -->
+              <% if (isMyTask && (t.status === 'todo' || t.status === 'in_progress' || t.status === 'rejected') && !mySubStatus) { %>
+                <button class="btn btn-brown btn-sm" onclick="openSubmitModal(<%= t.id %>,'<%= escHtml(t.title) %>', <%= t.requires_submission ? 'true' : 'false' %>)">📤 Nộp bài</button>
+              <% } %>
+              
+              <% if (mySubStatus === 'pending') { %><span class="badge badge-yellow">⏳ Chờ duyệt</span><% } %>
+              <% if (t.status === 'submitted' && canReviewSubmissionsUI) { %>
+                <button class="btn btn-green btn-sm" onclick="openReviewModal(<%= t.id %>,'<%= escHtml(t.title) %>', true)">🔍 Duyệt bài</button>
+              <% } else if (t.status === 'submitted' && canViewPeerSubmissions) { %>
+                <button class="btn btn-brown btn-sm" onclick="openReviewModal(<%= t.id %>,'<%= escHtml(t.title) %>', false)">👀 Xem bài nộp</button>
+              <% } %>
+              <% if (t.status === 'approved' && canReviewSubmissionsUI) { %>
+                <button class="btn btn-ghost btn-sm" onclick="openReviewModal(<%= t.id %>,'<%= escHtml(t.title) %>', false)">📎 Bài đã nộp</button>
+                <form action="/projects/<%= project.id %>/tasks/<%= t.id %>/undo-approve" method="POST" style="display:inline">
+                  <button type="submit" class="btn btn-yellow btn-sm" data-confirm="Bạn có chắc muốn hủy duyệt nhiệm vụ này? Trạng thái sẽ quay lại 'Đã nộp'.">Hủy duyệt</button>
+                </form>
+              <% } %>
+              <% if (canEditTasksUI || isCreator) { %>
+                <button class="btn btn-ghost btn-sm" onclick="openEditTaskModal(<%= t.id %>, '<%= escHtml(t.title) %>', '<%= escHtml(t.description||'') %>', '<%= t.priority %>', '<%= t.status %>', <%= t.requires_submission ? 'true' : 'false' %>)" style="color:var(--accent)">✏️</button>
+                <form action="/projects/<%= project.id %>/tasks/<%= t.id %>/delete" method="POST" style="display:inline">
+                  <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--red);border-color:rgba(220,38,38,0.3)" data-confirm="Xóa nhiệm vụ '<%= t.title %>'?">🗑️</button>
+                </form>
+              <% } %>
+            </div>
+          </div>
+        <% }) %>
+        <div class="empty-state" id="tasksEmptyFilter" style="display:none"><div class="empty-state-icon">🔍</div><p>Không có nhiệm vụ nào khớp bộ lọc</p></div>
+      <% } %>
+    </div>
+
+  <!-- ═══════ KANBAN TAB ═══════ -->
+  <% } else if (tab === 'kanban') { %>
+    <div class="fade-in">
+        <% 
+          const kTasks = locals.tasks || [];
+          const kCols = [
+            { key: 'todo', label: '📝 Cần làm' },
+            { key: 'in_progress', label: '🔄 Đang làm' },
+            { key: 'approved', label: '✅ Hoàn thành' }
+          ];
+          const mapStatusToCol = (s) => {
+            if (s === 'approved') return 'approved';
+            if (s === 'todo' || s === 'rejected') return 'todo';
+            return 'in_progress'; // in_progress, submitted
+          };
+          const prBadge2 = {urgent:'badge-red',high:'badge-pink',medium:'badge-yellow',low:'badge-dim'};
+        %>
+        <p style="color:var(--text-dim);font-size:0.85rem;margin-bottom:1rem">💡 Kéo thẻ nhiệm vụ giữa các cột để cập nhật trạng thái.</p>
+        <div class="kanban-board">
+          <% kCols.forEach(col => {
+            const colTasks = kTasks.filter(t => mapStatusToCol(t.status) === col.key);
+          %>
+            <div class="kanban-col" data-status="<%= col.key %>">
+              <div class="kanban-col-header">
+                <span><%= col.label %></span>
+                <span class="kanban-count"><%= colTasks.length %></span>
+              </div>
+              <% if (colTasks.length === 0) { %>
+                <div class="kanban-empty">Không có nhiệm vụ</div>
+              <% } %>
+              <% colTasks.forEach(t => { %>
+                <div class="kanban-card priority-<%= t.priority %>" draggable="true" data-task-id="<%= t.id %>">
+                  <div class="kanban-card-title"><%= t.title %></div>
+                  <div class="kanban-card-meta">
+                    <span class="badge <%= prBadge2[t.priority]||'badge-dim' %>"><%= t.priority %></span>
+                    <% if (t.assignee_name) { %><span>👤 <%= t.assignee_name %></span><% } %>
+                    <% if (t.deadline) { %><span>📅 <%= new Date(t.deadline).toLocaleDateString('vi-VN') %></span><% } %>
+                    <% if (t.status === 'submitted') { %><span class="badge badge-yellow">⏳ Chờ duyệt</span><% } %>
+                    <% if (t.status === 'rejected') { %><span class="badge badge-red">❌ Từ chối</span><% } %>
+                  </div>
+                </div>
+              <% }) %>
+            </div>
+          <% }) %>
+        </div>
+    </div>
+
+  <!-- ═══════ STATS TAB ═══════ -->
+  <% } else if (tab === 'stats') { %>
+    <div class="fade-in">
+        <% const mStats = locals.memberStats || []; %>
+        <% if (mStats.length === 0) { %>
+          <div class="empty-state"><div class="empty-state-icon">📈</div><p>Chưa có dữ liệu thành viên</p></div>
+        <% } else { %>
+          <div class="card mb-3">
+            <div style="background:var(--card);border-radius:var(--radius-lg);padding:1.5rem;display:flex;align-items:center;justify-content:center">
+            <div style="width:100%;max-width:600px;height:350px">
+              <canvas id="memberRadarChart"></canvas>
+            </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><span class="card-title">📋 Chi tiết theo thành viên</span></div>
+            <% mStats.forEach(m => { %>
+              <div class="member-row">
+                <div class="avatar" style="background:<%= m.avatarColor %>"><%= (m.displayName||'?')[0].toUpperCase() %></div>
+                <div class="member-info" style="flex:1">
+                  <div class="member-name"><%= m.displayName %></div>
+                  <div class="member-sub">
+                    <%= m.doneCount %>/<%= m.assignedCount %> nhiệm vụ hoàn thành ·
+                    Đúng hạn <%= m.ontimeRate %>% ·
+                    <% if (m.overdueCount > 0) { %><span style="color:var(--red)">Trễ hạn <%= m.overdueCount %></span><% } else { %>Không trễ hạn<% } %>
+                  </div>
+                </div>
+                <div class="score-display" style="min-width:48px;text-align:center"><%= m.score %>⭐</div>
+              </div>
+            <% }) %>
+          </div>
+
+          <script>
+            window.addEventListener('load', function() {
+              const data = <%- JSON.stringify(mStats) %>;
+              const ctx = document.getElementById('memberRadarChart');
+              if (!ctx || !window.Chart) return;
+              const colors = ['#004b87','#ff00cc','#9600ff','#00ff88','#ffcc00','#ff6600'];
+              new Chart(ctx, {
+                type: 'bar',
+                data: {
+                  labels: ['Điểm', 'HT (%)', 'Đúng hạn (%)', 'Việc (%)', 'HĐộng (%)'],
+                  datasets: data.map((m, i) => ({
+                    label: m.displayName,
+                    data: [
+                      Math.min(100, (m.score || 0) * 10),
+                      m.completionRate,
+                      m.ontimeRate,
+                      m.workloadIndex,
+                      m.activityIndex
+                    ],
+                    backgroundColor: colors[i % colors.length] + '99',
+                    borderColor: colors[i % colors.length],
+                    borderWidth: 1
+                  }))
+                },
+                options: {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  scales: {
+                    x: { ticks: { color: '#333' }, grid: { color: 'rgba(0,0,0,0.05)' } },
+                    y: { ticks: { color: '#333' }, grid: { color: 'rgba(0,0,0,0.05)' } }
+                  },
+                  plugins: {
+                    legend: { labels: { color: '#333', font: { size: 10 } } }
+                  }
+                }
+              });
+            });
+          </script>
+        <% } %>
+    </div>
+
+  <!-- ═══════ MEMBERS TAB ═══════ -->
+  <% } else if (tab === 'members') { %>
+    <div class="fade-in">
+      <!-- Pending approvals -->
+      <% if (canManage && locals.pendingMembers && pendingMembers.length > 0) { %>
+        <div class="card card-glow-pink mb-3">
+          <div class="card-header"><span class="card-title" style="color:var(--pink)">⏳ Yêu cầu tham gia (<%= pendingMembers.length %>)</span></div>
+          <% pendingMembers.forEach(pm => { %>
+            <div class="member-row">
+              <div class="avatar" style="background:<%= pm.avatar_color %>"><%= (pm.display_name||pm.username)[0].toUpperCase() %></div>
+              <div class="member-info">
+                <div class="member-name"><%= pm.display_name %></div>
+                <div class="member-sub">@<%= pm.username %></div>
+              </div>
+              <div style="display:flex;gap:0.4rem">
+                <form action="/projects/<%= project.id %>/members/<%= pm.user_id %>/approve" method="POST">
+                  <button class="btn btn-green btn-sm">✅ Duyệt</button>
+                </form>
+                <form action="/projects/<%= project.id %>/members/<%= pm.user_id %>/reject" method="POST">
+                  <button class="btn btn-red btn-sm">❌ Từ chối</button>
+                </form>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+
+      <!-- Active members -->
+      <% const activeMembersList = (locals.members||[]).filter(m=>m.status==='active'); %>
+      <div class="card">
+        <div class="card-header" style="flex-wrap:wrap;gap:0.6rem">
+          <span class="card-title">👥 Thành viên (<%= activeMembersList.length %>)</span>
+          <!-- Invite code -->
+          <div style="display:flex;align-items:center;gap:0.5rem">
+            <span style="font-size:0.8rem;color:var(--text-dim)">Mã mời:</span>
+            <span class="invite-code-box" style="font-size:0.95rem"><%= project.invite_code %></span>
+            <button class="copy-btn" onclick="copyText('<%= project.invite_code %>', this)" title="Sao chép mã">📋</button>
+          </div>
+        </div>
+
+        <!-- Member status filter pills -->
+        <div class="filter-bar" style="padding:0 1rem 1rem">
+          <% const cnt = {
+            all: activeMembersList.length,
+            done: activeMembersList.filter(m=>parseInt(m.total_tasks)>0 && parseInt(m.done_tasks)===parseInt(m.total_tasks)).length,
+            todo: activeMembersList.filter(m=>parseInt(m.todo_tasks)>0).length,
+            inprogress: activeMembersList.filter(m=>parseInt(m.inprogress_tasks)>0).length,
+            overdue: activeMembersList.filter(m=>parseInt(m.overdue_tasks)>0).length,
+            none: activeMembersList.filter(m=>parseInt(m.total_tasks)===0).length
+          }; %>
+          <button class="filter-pill active" data-mfilter="all">🗂️ Tất cả <span class="filter-count"><%= cnt.all %></span></button>
+          <button class="filter-pill" data-mfilter="done">✅ Đã hoàn thành <span class="filter-count"><%= cnt.done %></span></button>
+          <button class="filter-pill" data-mfilter="inprogress">🔄 Đang làm <span class="filter-count"><%= cnt.inprogress %></span></button>
+          <button class="filter-pill" data-mfilter="todo">📝 Chưa làm <span class="filter-count"><%= cnt.todo %></span></button>
+          <button class="filter-pill" data-mfilter="overdue">⚠️ Trễ hạn <span class="filter-count"><%= cnt.overdue %></span></button>
+          <button class="filter-pill" data-mfilter="none">⭕ Chưa có NV <span class="filter-count"><%= cnt.none %></span></button>
+        </div>
+
+        <% activeMembersList.forEach(m => {
+          const total = parseInt(m.total_tasks), done = parseInt(m.done_tasks), overdue = parseInt(m.overdue_tasks), todo = parseInt(m.todo_tasks), inprog = parseInt(m.inprogress_tasks);
+          const mTags = [];
+          if (total > 0 && done === total) mTags.push('done');
+          if (inprog > 0) mTags.push('inprogress');
+          if (todo > 0) mTags.push('todo');
+          if (overdue > 0) mTags.push('overdue');
+          if (total === 0) mTags.push('none');
+        %>
+          <div class="member-row" data-mtags="<%= mTags.join(' ') %>">
+            <div class="avatar" style="background:<%= m.avatar_color %>"><%= (m.display_name||m.username)[0].toUpperCase() %></div>
+            <div class="member-info" style="flex:1;min-width:160px">
+              <div class="member-name"><%= m.display_name %> <% if (m.user_id === project.owner_id) { %><span style="color:var(--yellow)">⭐</span><% } %></div>
+              <div class="member-sub">@<%= m.username %><% if (m.email) { %> · <%= m.email %><% } %></div>
+              <div class="member-task-progress">
+                <% if (total === 0) { %>
+                  <span class="badge badge-dim badge-sm">⭕ Chưa có nhiệm vụ</span>
+                <% } else { %>
+                  <span class="badge badge-sm <%= done===total ? 'badge-green' : 'badge-brown' %>">📋 <%= done %>/<%= total %> hoàn thành</span>
+                  <% if (overdue > 0) { %><span class="badge badge-red badge-sm">⚠️ <%= overdue %> trễ hạn</span><% } %>
+                <% } %>
+              </div>
+            </div>
+            <% const roleLabel2 = {leader:'👑 Nhóm trưởng',vice_leader:'⭐ Phó nhóm',member:'👤 Thành viên'}; %>
+            <span class="badge <%= {leader:'badge-brown',vice_leader:'badge-purple',member:'badge-dim',custom:'badge-pink'}[m.role]||'badge-dim' %>">
+              <%= m.role==='custom'&&m.custom_role_name ? `🎯 ${m.custom_role_name}` : (roleLabel2[m.role]||m.role) %>
+            </span>
+            <% if (canManage) { %>
+              <!-- Permission badges -->
+              <div class="member-perm-badges">
+                <span class="badge <%= m.can_view_peer_submissions ? 'badge-green' : 'badge-dim' %> badge-sm" title="Xem bài nộp">👀</span>
+                <span class="badge <%= m.can_comment_submissions ? 'badge-green' : 'badge-dim' %> badge-sm" title="Bình luận">💬</span>
+                <span class="badge <%= m.can_approve_submissions ? 'badge-green' : 'badge-dim' %> badge-sm" title="Phê duyệt">✅</span>
+                <span class="badge <%= m.can_edit_tasks ? 'badge-green' : 'badge-dim' %> badge-sm" title="Chỉnh sửa NV">✏️</span>
+              </div>
+            <% } %>
+            <div class="score-display" style="min-width:48px;text-align:center"><%= m.score %>⭐</div>
+            <% if (canManage && m.user_id !== currentUser.id) { %>
+              <!-- Permission toggle buttons -->
+              <div class="member-perm-toggles">
+                <form action="/projects/<%= project.id %>/members/<%= m.user_id %>/toggle-peer-submissions" method="POST" style="display:inline">
+                  <button type="submit" class="btn btn-ghost btn-xs" title="Toggle: Xem bài nộp"><%= m.can_view_peer_submissions ? '🔒' : '🔓' %></button>
+                </form>
+                <form action="/projects/<%= project.id %>/members/<%= m.user_id %>/toggle-comment-submissions" method="POST" style="display:inline">
+                  <button type="submit" class="btn btn-ghost btn-xs" title="Toggle: Bình luận"><%= m.can_comment_submissions ? '🔒' : '🔓' %></button>
+                </form>
+                <form action="/projects/<%= project.id %>/members/<%= m.user_id %>/toggle-approve-submissions" method="POST" style="display:inline">
+                  <button type="submit" class="btn btn-ghost btn-xs" title="Toggle: Phê duyệt"><%= m.can_approve_submissions ? '🔒' : '🔓' %></button>
+                </form>
+                <form action="/projects/<%= project.id %>/members/<%= m.user_id %>/toggle-edit-tasks" method="POST" style="display:inline">
+                  <button type="submit" class="btn btn-ghost btn-xs" title="Toggle: Chỉnh sửa NV"><%= m.can_edit_tasks ? '🔒' : '🔓' %></button>
+                </form>
+              </div>
+            <% } %>
+            <% if (canManage && m.user_id !== currentUser.id) { %>
+              <button class="btn btn-ghost btn-sm" onclick="openMemberModal(<%= JSON.stringify(m) %>)">✏️</button>
+            <% } %>
+          </div>
+        <% }) %>
+        <div class="empty-state" id="membersEmptyFilter" style="display:none"><div class="empty-state-icon">🔍</div><p>Không có thành viên nào khớp bộ lọc</p></div>
+      </div>
+    </div>
+
+  <!-- ═══════ ROADMAP TAB ═══════ -->
+  <% } else if (tab === 'roadmap') { %>
+    <div class="fade-in">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:0.5rem">
+        <h3 style="color:var(--brown)">🗺️ Lộ trình dự án</h3>
+        <% if (canManage) { %>
+          <button class="btn btn-brown" data-modal-open="modalCreateRoadmap">＋ Thêm mốc</button>
+        <% } %>
+      </div>
+
+      <% if (!locals.roadmapItems || roadmapItems.length === 0) { %>
+        <div class="empty-state"><div class="empty-state-icon">🗺️</div><p>Chưa có mốc lộ trình nào</p></div>
+      <% } else { %>
+        <!-- Gantt Chart -->
+        <div class="card mb-3">
+          <div class="card-header"><span class="card-title">📊 Biểu đồ Gantt</span></div>
+          <div class="gantt-container">
+            <% roadmapItems.forEach(r => { %>
+              <div class="gantt-row">
+                <div class="gantt-label">
+                  <div style="font-weight:600;font-size:0.85rem;color:var(--text-bright)"><%= r.title.substring(0,20) %></div>
+                  <div style="font-size:0.72rem;color:var(--text-dim)"><%= new Date(r.start_date).toLocaleDateString('vi-VN') %> → <%= new Date(r.end_date).toLocaleDateString('vi-VN') %></div>
+                </div>
+                <div class="gantt-track">
+                  <div class="gantt-bar" 
+                    data-start="<%= r.start_date %>" 
+                    data-end="<%= r.end_date %>" 
+                    data-color="<%= r.color %>">
+                    <%= r.title.substring(0,16) %>
+                  </div>
+                </div>
+                <span class="badge <%= {pending:'badge-dim',in_progress:'badge-brown',done:'badge-green'}[r.status] %>">
+                  <%= {pending:'Chờ',in_progress:'Đang chạy',done:'✅ Xong'}[r.status] %>
+                </span>
+                <% if (canManage) { %>
+                  <form action="/projects/<%= project.id %>/roadmap/<%= r.id %>/delete" method="POST">
+                    <button type="submit" class="btn btn-red btn-sm">🗑️</button>
+                  </form>
+                <% } %>
+              </div>
+            <% }) %>
+          </div>
+        </div>
+
+        <!-- Roadmap list -->
+        <% roadmapItems.forEach(r => { %>
+          <div class="card mb-2" style="border-left:3px solid <%= r.color %>">
+            <div class="d-flex align-center justify-between" style="flex-wrap:wrap;gap:0.5rem">
+              <div>
+                <span style="font-weight:700;color:var(--text-bright)"><%= r.title %></span>
+                <% if (r.assignee_name) { %><span style="color:var(--text-dim);font-size:0.82rem"> · 👤 <%= r.assignee_name %></span><% } %>
+              </div>
+              <div style="display:flex;gap:0.5rem;align-items:center">
+                <span class="badge <%= {pending:'badge-dim',in_progress:'badge-brown',done:'badge-green'}[r.status] %>">
+                  <%= {pending:'⏳ Chờ',in_progress:'🔄 Đang chạy',done:'✅ Xong'}[r.status] %>
+                </span>
+                <% if (canManage) { %>
+                  <form action="/projects/<%= project.id %>/roadmap/<%= r.id %>/status" method="POST" style="display:inline">
+                    <select name="status" onchange="this.form.submit()" class="form-control" style="height:30px;padding:2px 6px;font-size:0.8rem;width:auto">
+                      <option value="pending" <%=r.status==='pending'?'selected':''%>>⏳ Chờ</option>
+                      <option value="in_progress" <%=r.status==='in_progress'?'selected':''%>>🔄 Đang chạy</option>
+                      <option value="done" <%=r.status==='done'?'selected':''%>>✅ Xong</option>
+                    </select>
+                  </form>
+                <% } %>
+              </div>
+            </div>
+            <% if (r.description) { %><p style="font-size:0.85rem;color:var(--text-dim);margin-top:0.3rem"><%= r.description %></p><% } %>
+            <div style="font-size:0.8rem;color:var(--text-dim);margin-top:0.4rem">
+              📅 <%= new Date(r.start_date).toLocaleDateString('vi-VN') %> → <%= new Date(r.end_date).toLocaleDateString('vi-VN') %>
+              (<%
+                const diffDays = Math.ceil((new Date(r.end_date) - new Date(r.start_date)) / 86400000);
+              %><%= diffDays %> ngày)
+            </div>
+          </div>
+        <% }) %>
+      <% } %>
+    </div>
+
+  <!-- ═══════ CHAT TAB ═══════ -->
+  <% } else if (tab === 'chat') { %>
+    <div class="fade-in">
+      <div class="card card-glow-brown">
+        <div class="card-header">
+          <span class="card-title">💬 Chat nhóm · <%= project.name %></span>
+          <span style="font-size:0.78rem;color:var(--green)">🟢 Trực tuyến</span>
+        </div>
+        <div class="chat-box" id="chatBox">
+          <% if (!locals.messages || messages.length === 0) { %>
+            <div style="text-align:center;padding:2rem;color:var(--text-dim);font-size:0.9rem">
+              💬 Chưa có tin nhắn nào. Hãy bắt đầu trò chuyện!
+            </div>
+          <% } else { %>
+            <% messages.forEach(m => { %>
+              <% const isOwn = m.user_id === currentUser.id; %>
+              <% const initial = (m.display_name||'?')[0].toUpperCase(); %>
+              <% const time = new Date(m.created_at).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}); %>
+              <div class="chat-msg <%= isOwn?'own':'' %>">
+                <div class="avatar" style="background:<%= m.avatar_color||'#004b87' %>;min-width:30px"><%= initial %></div>
+                <div>
+                  <% if (!isOwn) { %><div class="chat-name"><%= m.display_name %></div><% } %>
+                  <div class="chat-bubble"><%= m.content %></div>
+                  <div class="chat-time"><%= time %></div>
+                </div>
+              </div>
+            <% }) %>
+          <% } %>
+        </div>
+        <div class="typing-indicator" id="typingIndicator"></div>
+        <div class="chat-input-area">
+          <textarea id="chatInput" class="form-control" placeholder="Nhập tin nhắn... (Enter để gửi)" rows="1"></textarea>
+          <button id="chatSendBtn" class="btn btn-brown" style="padding:0.5rem 1rem">➤ Gửi</button>
+        </div>
+      </div>
+    </div>
+
+  <!-- ═══════ SETTINGS TAB ═══════ -->
+  <% } else if (tab === 'settings' && canManage) { %>
+    <div class="fade-in" style="max-width:700px">
+      <!-- Project settings form -->
+      <div class="card mb-3">
+        <div class="card-header"><span class="card-title">⚙️ Cài đặt dự án</span></div>
+        <form action="/projects/<%= project.id %>/settings/update" method="POST">
+          <div class="form-group">
+            <label class="form-label">Tên dự án *</label>
+            <input type="text" name="name" class="form-control" value="<%= project.name %>" required/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mô tả</label>
+            <textarea name="description" class="form-control"><%= project.description||'' %></textarea>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Deadline dự án</label>
+              <input type="date" name="deadline" class="form-control" value="<%= project.deadline ? new Date(project.deadline).toISOString().split('T')[0] : '' %>"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Cảnh báo trước (ngày)</label>
+              <input type="number" name="deadline_alert_days" class="form-control" value="<%= project.deadline_alert_days || 2 %>" min="1" max="30"/>
+            </div>
+            <div class="form-group" style="display:flex;align-items:center;gap:0.5rem;margin-top:1.5rem;">
+              <input type="checkbox" name="is_public" id="is_public" <%= project.is_public ? 'checked' : '' %> style="width:20px;height:20px" />
+              <label for="is_public" style="margin:0;cursor:pointer">Công khai cho Khách (Chỉ xem tổng quan)</label>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Trạng thái</label>
+              <select name="status" class="form-control">
+                <option value="active" <%=project.status==='active'?'selected':''%>>🟢 Đang chạy</option>
+                <option value="completed" <%=project.status==='completed'?'selected':''%>>✅ Hoàn thành</option>
+                <option value="archived" <%=project.status==='archived'?'selected':''%>>📦 Lưu trữ</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Màu chủ đề</label>
+              <input type="color" name="color" class="form-control" value="<%= project.color || '#004b87' %>" style="height:44px;padding:4px"/>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-brown">💾 Lưu cài đặt</button>
+        </form>
+      </div>
+
+      <!-- Invite code -->
+      <div class="card mb-3">
+        <div class="card-header"><span class="card-title">🔑 Mã mời dự án</span></div>
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+          <div class="invite-code-box"><%= project.invite_code %></div>
+          <button class="copy-btn btn btn-brown btn-sm" onclick="copyText('<%= project.invite_code %>', this)">📋 Sao chép</button>
+          <form action="/projects/<%= project.id %>/settings/regen-code" method="POST">
+            <button type="submit" class="btn btn-ghost btn-sm" data-confirm="Tạo mã mới? Mã cũ sẽ không còn dùng được">🔄 Tạo mã mới</button>
+          </form>
+        </div>
+        <p style="font-size:0.82rem;color:var(--text-dim);margin-top:0.8rem">Chia sẻ mã này để thành viên gửi yêu cầu tham gia</p>
+      </div>
+
+      <!-- Danger zone -->
+      <div class="card" style="border-color:rgba(255,34,68,0.3)">
+        <div class="card-header"><span class="card-title" style="color:var(--red)">☢️ Vùng nguy hiểm</span></div>
+        <form action="/projects/<%= project.id %>/settings/delete" method="POST">
+          <button type="submit" class="btn btn-red" data-confirm="XÓA DỰ ÁN '<%= project.name %>'? Không thể hoàn tác!">
+            🗑️ Xóa dự án vĩnh viễn
+          </button>
+        </form>
+      </div>
+    </div>
+  <% } %>
+</div>
+
+<!-- ═══ MODAL: Create Task ═══ -->
+<div class="modal-overlay" id="modalCreateTask">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="neon-text-brown" style="font-size:1rem">📋 Thêm nhiệm vụ mới</h3>
+      <button class="modal-close" data-modal-close="modalCreateTask">✕</button>
+    </div>
+    <form action="/projects/<%= project.id %>/tasks/create" method="POST">
+      <div class="form-group">
+        <label class="form-label">Tiêu đề *</label>
+        <input type="text" name="title" class="form-control" placeholder="Tên nhiệm vụ..." required/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mô tả <span style="font-weight:400;color:var(--text-dim);font-size:0.78rem">(mỗi dòng = 1 gạch đầu dòng)</span></label>
+        <textarea name="description" class="form-control" rows="4" placeholder="Ví dụ:&#10;Nghiên cứu yêu cầu&#10;Thiết kế giao diện&#10;Viết báo cáo tổng kết"></textarea>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Giao cho</label>
+          <div class="form-control" style="height:auto; max-height:150px; overflow-y:auto; padding:0.5rem; background:rgba(0,0,0,0.2)">
+            <% (locals.activeMembers||[]).forEach(m => { %>
+              <label style="display:block; margin-bottom:4px; cursor:pointer">
+                <input type="checkbox" name="assigned_to" value="<%= m.user_id %>"> <%= m.display_name %>
+              </label>
+            <% }) %>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ưu tiên</label>
+          <select name="priority" class="form-control">
+            <option value="low">⚪ Thấp</option>
+            <option value="medium" selected>🟡 Trung bình</option>
+            <option value="high">🟠 Cao</option>
+            <option value="urgent">🔴 Khẩn cấp</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:1rem;display:flex;align-items:center;gap:0.5rem">
+        <input type="checkbox" name="requires_submission" id="requires_submission" value="true" checked style="width:16px;height:16px">
+        <label for="requires_submission" style="margin:0;cursor:pointer;font-weight:600;font-size:0.85rem">Bắt buộc nộp tài liệu (Link Drive)</label>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Deadline</label>
+        <input type="datetime-local" name="deadline" class="form-control"/>
+      </div>
+      <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+        <button type="button" class="btn btn-ghost" data-modal-close="modalCreateTask">Hủy</button>
+        <button type="submit" class="btn btn-brown">＋ Tạo nhiệm vụ</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Submit task ═══ -->
+<div class="modal-overlay" id="modalSubmitTask">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="neon-text-brown" style="font-size:1rem">📤 Nộp bài — <span id="submitTaskTitle"></span></h3>
+      <button class="modal-close" onclick="closeModal('modalSubmitTask')">✕</button>
+    </div>
+    <form id="submitTaskForm" method="POST">
+      <div class="form-group" id="driveLinkGroup">
+        <label class="form-label" id="driveLinkLabel">Link Google Drive *</label>
+        <input type="url" name="drive_link" id="driveLinkInput" class="form-control" placeholder="https://drive.google.com/..." required/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ghi chú</label>
+        <textarea name="note" class="form-control" placeholder="Ghi chú thêm..."></textarea>
+      </div>
+      <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modalSubmitTask')">Hủy</button>
+        <button type="submit" class="btn btn-brown">📤 Nộp bài</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Review submission ═══ -->
+<div class="modal-overlay" id="modalReview">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="neon-text-brown" style="font-size:1rem"><span id="reviewModalIcon">🔍</span> <span id="reviewModalTitle">Duyệt bài</span> — <span id="reviewTaskTitle"></span></h3>
+      <button class="modal-close" onclick="closeModal('modalReview')">✕</button>
+    </div>
+    <div id="reviewContent" style="margin-bottom:1rem"></div>
+    <form id="reviewTaskForm" method="POST">
+      <input type="hidden" name="submission_id" id="reviewSubmissionId"/>
+      <div class="form-group" id="reviewNoteGroup">
+        <label class="form-label">Ghi chú phản hồi</label>
+        <textarea name="leader_note" class="form-control" placeholder="Nhận xét..."></textarea>
+      </div>
+      <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem" id="reviewActions">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('modalReview')">Hủy</button>
+        <button type="submit" name="action" value="reject" class="btn btn-red">❌ Từ chối</button>
+        <button type="submit" name="action" value="approve" class="btn btn-green">✅ Duyệt</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Edit member ═══ -->
+<div class="modal-overlay" id="modalMember">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="neon-text-brown" style="font-size:1rem">✏️ Quản lý thành viên</h3>
+      <button class="modal-close" onclick="closeModal('modalMember')">✕</button>
+    </div>
+    <div id="memberModalContent"></div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Create Roadmap ═══ -->
+<div class="modal-overlay" id="modalCreateRoadmap">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="neon-text-brown" style="font-size:1rem">🗺️ Thêm mốc lộ trình</h3>
+      <button class="modal-close" data-modal-close="modalCreateRoadmap">✕</button>
+    </div>
+    <form action="/projects/<%= project.id %>/roadmap/create" method="POST">
+      <div class="form-group">
+        <label class="form-label">Tên mốc *</label>
+        <input type="text" name="title" class="form-control" placeholder="VD: Hoàn thành prototype..." required/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mô tả</label>
+        <textarea name="description" class="form-control" placeholder="Chi tiết mốc này..."></textarea>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Ngày bắt đầu *</label>
+          <input type="date" name="start_date" class="form-control" required/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ngày kết thúc *</label>
+          <input type="date" name="end_date" class="form-control" required/>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Màu sắc</label>
+          <input type="color" name="color" class="form-control" value="#004b87" style="height:44px;padding:4px"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Giao cho</label>
+          <div class="form-control" style="height:auto; max-height:150px; overflow-y:auto; padding:0.5rem; background:rgba(0,0,0,0.2)">
+            <% (locals.activeMembers||[]).forEach(m => { %>
+              <label style="display:block; margin-bottom:4px; cursor:pointer">
+                <input type="checkbox" name="assigned_to" value="<%= m.user_id %>"> <%= m.display_name %>
+              </label>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+        <button type="button" class="btn btn-ghost" data-modal-close="modalCreateRoadmap">Hủy</button>
+        <button type="submit" class="btn btn-brown">＋ Thêm mốc</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Edit Task ═══ -->
+<div class="modal-overlay" id="modalEditTask">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="neon-text-brown" style="font-size:1rem">✏️ Chỉnh sửa nhiệm vụ</h3>
+      <button class="modal-close" data-modal-close="modalEditTask">✕</button>
+    </div>
+    <form id="editTaskForm" method="POST">
+      <div class="form-group">
+        <label class="form-label">Tiêu đề *</label>
+        <input type="text" name="title" id="editTaskTitle" class="form-control" required/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mô tả</label>
+        <textarea name="description" id="editTaskDesc" class="form-control" rows="3"></textarea>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Ưu tiên</label>
+          <select name="priority" id="editTaskPriority" class="form-control">
+            <option value="low">⚪ Thấp</option>
+            <option value="medium">🟡 Trung bình</option>
+            <option value="high">🟠 Cao</option>
+            <option value="urgent">🔴 Khẩn cấp</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Trạng thái</label>
+          <select name="status" id="editTaskStatus" class="form-control">
+            <option value="todo">📝 Chưa làm</option>
+            <option value="in_progress">🔄 Đang làm</option>
+            <option value="submitted">📨 Đã nộp</option>
+            <option value="approved">✅ Hoàn thành</option>
+            <option value="rejected">❌ Từ chối</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:1rem;display:flex;align-items:center;gap:0.5rem">
+        <input type="checkbox" name="requires_submission" id="editTaskReqSub" value="true" style="width:16px;height:16px">
+        <label for="editTaskReqSub" style="margin:0;cursor:pointer;font-weight:600;font-size:0.85rem">Bắt buộc nộp tài liệu (Link Drive)</label>
+      </div>
+      <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+        <button type="button" class="btn btn-ghost" data-modal-close="modalEditTask">Hủy</button>
+        <button type="submit" class="btn btn-brown">💾 Lưu thay đổi</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<script>
+function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Submit task modal
+function openSubmitModal(taskId, taskTitle, requiresDoc) {
+  document.getElementById('submitTaskTitle').textContent = taskTitle;
+  document.getElementById('submitTaskForm').action = '/projects/<%= project.id %>/tasks/' + taskId + '/submit';
+  const driveGroup = document.getElementById('driveLinkGroup');
+  const driveInput = document.getElementById('driveLinkInput');
+  const driveLabel = document.getElementById('driveLinkLabel');
+  if (driveInput) {
+    if (requiresDoc) {
+      driveInput.required = true;
+      driveLabel.textContent = 'Link Google Drive *';
+    } else {
+      driveInput.required = false;
+      driveLabel.textContent = 'Link Google Drive (Không bắt buộc)';
+    }
+  }
+  openModal('modalSubmitTask');
+}
+
+// Review modal — fetch submission from server via simple approach
+function openReviewModal(taskId, taskTitle, allowReview) {
+  document.getElementById('reviewTaskTitle').textContent = taskTitle;
+  document.getElementById('reviewTaskForm').action = '/projects/<%= project.id %>/tasks/' + taskId + '/review';
+  document.getElementById('reviewModalIcon').textContent = allowReview ? '🔍' : '👀';
+  document.getElementById('reviewModalTitle').textContent = allowReview ? 'Duyệt bài' : 'Xem bài nộp';
+  document.getElementById('reviewNoteGroup').style.display = allowReview ? '' : 'none';
+  document.getElementById('reviewActions').style.display = allowReview ? 'flex' : 'none';
+  // Fetch latest submission
+  fetch('/api/submissions/' + taskId)
+    .then(r => r.json())
+    .then(data => {
+      if (data.submission) {
+        const s = data.submission;
+        document.getElementById('reviewSubmissionId').value = s.id;
+        document.getElementById('reviewContent').innerHTML = `
+          <div style="background:rgba(0,245,255,0.05);border:1px solid rgba(0,245,255,0.2);border-radius:8px;padding:1rem;margin-bottom:1rem">
+            <div style="font-size:0.82rem;color:var(--text-dim);margin-bottom:0.4rem">🔗 Link Drive:</div>
+            <a href="${escHtml(s.drive_link)}" target="_blank" class="btn btn-brown btn-sm">Mở tài liệu ↗</a>
+            ${s.note ? `<div style="margin-top:0.5rem;font-size:0.85rem;color:var(--text-dim)">Ghi chú: ${escHtml(s.note)}</div>` : ''}
+            <div style="font-size:0.78rem;color:var(--text-dim);margin-top:0.4rem">Nộp lúc: ${new Date(s.submitted_at).toLocaleString('vi-VN')}</div>
+          </div>`;
+        if (!allowReview) {
+          document.getElementById('reviewContent').innerHTML += '<p style="color:var(--text-dim);font-size:0.82rem">Bạn chỉ có quyền xem bài nộp này.</p>';
+        }
+      } else {
+        document.getElementById('reviewContent').innerHTML = '<p style="color:var(--text-dim)">Không tìm thấy bài nộp.</p>';
+      }
+    });
+  openModal('modalReview');
+}
+
+// Edit Task modal
+function openEditTaskModal(taskId, title, desc, priority, status, reqSub) {
+  document.getElementById('editTaskForm').action = '/projects/<%= project.id %>/tasks/' + taskId + '/edit';
+  document.getElementById('editTaskTitle').value = title;
+  document.getElementById('editTaskDesc').value = desc || '';
+  document.getElementById('editTaskPriority').value = priority || 'medium';
+  document.getElementById('editTaskStatus').value = status || 'todo';
+  document.getElementById('editTaskReqSub').checked = !!reqSub;
+  openModal('modalEditTask');
+}
+
+
+// Member edit modal
+function openMemberModal(m) {
+  const rl = {leader:'👑 Nhóm trưởng',vice_leader:'⭐ Phó nhóm',member:'👤 Thành viên',custom:'🎯 Tùy chỉnh'};
+  document.getElementById('memberModalContent').innerHTML = `
+    <div style="margin-bottom:1rem;display:flex;align-items:center;gap:0.8rem">
+      <div class="avatar avatar-lg" style="background:${m.avatar_color}">${(m.display_name||m.username)[0].toUpperCase()}</div>
+      <div>
+        <div style="font-weight:700;color:var(--text-bright)">${escHtml(m.display_name)}</div>
+        <div style="color:var(--text-dim);font-size:0.85rem">@${escHtml(m.username)}</div>
+      </div>
+    </div>
+    <form action="/projects/<%= project.id %>/members/${m.user_id}/role" method="POST" style="margin-bottom:1rem">
+      <label class="form-label">Vai trò</label>
+      <select name="role" class="form-control mb-1" id="roleSelect_${m.user_id}" onchange="document.querySelector('.custom-role-input[data-uid="${m.user_id}"]').style.display=this.value==='custom'?'block':'none'">
+        <option value="vice_leader" ${m.role==='vice_leader'?'selected':''}>⭐ Phó nhóm</option>
+        <option value="member" ${m.role==='member'?'selected':''}>👤 Thành viên</option>
+        <option value="custom" ${m.role==='custom'?'selected':''}>🎯 Tùy chỉnh</option>
+      </select>
+      <div class="custom-role-input mt-1" data-uid="${m.user_id}" style="display:${m.role==='custom'?'block':'none'}">
+        <input type="text" name="custom_role_name" class="form-control" placeholder="Tên vai trò..." value="${escHtml(m.custom_role_name||'')}"/>
+      </div>
+      <button type="submit" class="btn btn-brown btn-sm mt-1">Lưu vai trò</button>
+    </form>
+    <div style="margin-bottom:1rem">
+      <label class="form-label">Quyền riêng</label>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0.5rem">
+        <form action="/projects/<%= project.id %>/members/${m.user_id}/toggle-peer-submissions" method="POST">
+          <button type="submit" class="btn ${m.can_view_peer_submissions ? 'btn-green' : 'btn-ghost'} btn-sm btn-block">
+            👀 ${m.can_view_peer_submissions ? 'Thu quyền xem' : 'Cấp quyền xem'}
+          </button>
+        </form>
+        <form action="/projects/<%= project.id %>/members/${m.user_id}/toggle-comment-submissions" method="POST">
+          <button type="submit" class="btn ${m.can_comment_submissions ? 'btn-green' : 'btn-ghost'} btn-sm btn-block">
+            💬 ${m.can_comment_submissions ? 'Thu bình luận' : 'Cấp bình luận'}
+          </button>
+        </form>
+        <form action="/projects/<%= project.id %>/members/${m.user_id}/toggle-approve-submissions" method="POST">
+          <button type="submit" class="btn ${m.can_approve_submissions ? 'btn-green' : 'btn-ghost'} btn-sm btn-block">
+            ✅ ${m.can_approve_submissions ? 'Thu quyền duyệt' : 'Cấp quyền duyệt'}
+          </button>
+        </form>
+        <form action="/projects/<%= project.id %>/members/${m.user_id}/toggle-edit-tasks" method="POST">
+          <button type="submit" class="btn ${m.can_edit_tasks ? 'btn-green' : 'btn-ghost'} btn-sm btn-block">
+            ✏️ ${m.can_edit_tasks ? 'Thu sửa NV' : 'Cấp sửa NV'}
+          </button>
+        </form>
+      </div>
+    </div>
+    <form action="/projects/<%= project.id %>/members/${m.user_id}/score" method="POST" style="margin-bottom:1rem;display:flex;gap:0.5rem;align-items:flex-end">
+      <div style="flex:1">
+        <label class="form-label">Điểm đóng góp</label>
+        <input type="number" name="score" class="form-control" value="${m.score}" min="0" max="100"/>
+      </div>
+      <button type="submit" class="btn btn-yellow btn-sm" style="color:var(--yellow);border-color:var(--yellow)">⭐ Lưu điểm</button>
+    </form>
+    <form action="/projects/<%= project.id %>/members/${m.user_id}/remove" method="POST">
+      <button type="submit" class="btn btn-red btn-sm" data-confirm="Xóa thành viên ${escHtml(m.display_name)} khỏi dự án?">🗑️ Xóa khỏi nhóm</button>
+    </form>`;
+  openModal('modalMember');
+}
+
+// Task filter
+document.querySelectorAll('.filter-pill[data-filter]').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.filter-pill[data-filter]').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    const filter = this.dataset.filter;
+    let visibleCount = 0;
+    document.querySelectorAll('.task-card[data-filter-tag]').forEach(item => {
+      const show = (filter === 'all' || item.dataset.filterTag === filter);
+      item.style.display = show ? '' : 'none';
+      if (show) visibleCount++;
+    });
+    const emptyEl = document.getElementById('tasksEmptyFilter');
+    if (emptyEl) emptyEl.style.display = visibleCount === 0 ? '' : 'none';
+  });
+});
+
+// Member filter
+document.querySelectorAll('.filter-pill[data-mfilter]').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.filter-pill[data-mfilter]').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    const filter = this.dataset.mfilter;
+    let visibleCount = 0;
+    document.querySelectorAll('.member-row[data-mtags]').forEach(row => {
+      const tags = row.dataset.mtags.split(' ');
+      const show = (filter === 'all' || tags.includes(filter));
+      row.style.display = show ? '' : 'none';
+      if (show) visibleCount++;
+    });
+    const emptyEl = document.getElementById('membersEmptyFilter');
+    if (emptyEl) emptyEl.style.display = visibleCount === 0 ? '' : 'none';
+  });
+});
+
+// ─── Kanban drag & drop ───────────────────────────────────────
+(function() {
+  const board = document.querySelector('.kanban-board');
+  if (!board) return;
+
+  let dragged = null;
+
+  board.querySelectorAll('.kanban-card').forEach(card => {
+    card.addEventListener('dragstart', () => {
+      dragged = card;
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      dragged = null;
+    });
+  });
+
+  board.querySelectorAll('.kanban-col').forEach(col => {
+    col.addEventListener('dragover', e => {
+      e.preventDefault();
+      col.classList.add('drag-over');
+    });
+    col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+    col.addEventListener('drop', e => {
+      e.preventDefault();
+      col.classList.remove('drag-over');
+      if (!dragged) return;
+      const taskId = dragged.dataset.taskId;
+      const newStatus = col.dataset.status;
+      const countEl = col.querySelector('.kanban-count');
+      const emptyEl = col.querySelector('.kanban-empty');
+
+      // Optimistic UI move
+      if (emptyEl) emptyEl.remove();
+      col.appendChild(dragged);
+      if (countEl) countEl.textContent = col.querySelectorAll('.kanban-card').length;
+
+      fetch('/projects/<%= project.id %>/tasks/' + taskId + '/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (!data.ok) {
+          alert(data.error || 'Lỗi cập nhật trạng thái');
+          location.reload();
+        }
+      })
+      .catch(() => location.reload());
+    });
+  });
+})();
+</script>
+
+<%- include('../partials/footer') %>

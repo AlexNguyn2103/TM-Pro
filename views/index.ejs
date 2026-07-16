@@ -1,0 +1,69 @@
+<%- include('partials/header') %>
+<%- include('partials/navbar') %>
+
+<!-- Hero Section -->
+<div class="hero">
+  <div style="position:relative;z-index:2;max-width:700px;width:100%">
+    <div class="hero-tag">⚡ Nền tảng quản lý nhóm thế hệ mới</div>
+    <h1 class="hero-title">
+      <span class="accent">19A</span><span style="color:var(--text-dim)">-</span><span class="highlight">Teamly</span>
+      <br/>
+      <span style="font-size:0.5em;font-weight:500;color:var(--text-dim)">Quản lý nhóm hiệu quả, hiện đại</span>
+    </h1>
+    <p class="hero-sub">
+      Tạo dự án, giao nhiệm vụ, theo dõi tiến độ, lập lộ trình và nhắn tin nhóm — tất cả trong một nền tảng với giao diện chuyên nghiệp.
+    </p>
+    <div class="hero-actions">
+      <a href="/auth/register" class="btn btn-primary btn-lg">🚀 Bắt đầu miễn phí</a>
+      <a href="/auth/login" class="btn btn-ghost btn-lg" style="border-color:rgba(34,197,94,0.3)">Đăng nhập →</a>
+      <a href="/guest" class="btn btn-ghost btn-lg" style="border-color:var(--accent);color:var(--accent)">👀 Xem với tư cách Khách</a>
+    </div>
+
+    <!-- Feature pills -->
+    <div class="hero-pills">
+      <% ['📋 Quản lý nhiệm vụ','📅 Lộ trình Gantt','💬 Chat nhóm','🔔 Thông báo thông minh','🏅 Chấm điểm thành viên','🔑 Mã mời dự án','✅ Xác nhận nhận nhiệm vụ','📤 Nộp tài liệu'].forEach(f => { %>
+        <span class="badge badge-green" style="font-size:0.73rem;padding:4px 12px"><%= f %></span>
+      <% }) %>
+    </div>
+  </div>
+</div>
+
+<!-- Features Section -->
+<div class="features-section">
+  <div class="container">
+    <h2 style="text-align:center;margin-bottom:2rem;color:var(--primary-dark)">✨ Tính năng nổi bật</h2>
+    <div class="features-grid">
+      <%
+        const features = [
+          {icon:'👑', title:'Phân cấp vai trò', desc:'Nhóm trưởng, phó nhóm, thành viên hoặc tùy chỉnh vai trò linh hoạt.', color:'var(--primary-dark)', bg:'rgba(22,163,74,0.1)'},
+          {icon:'📊', title:'Theo dõi tiến độ', desc:'Thanh tiến độ trực quan, lộ trình Gantt, deadline tự động.', color:'var(--accent)', bg:'rgba(146,64,14,0.1)'},
+          {icon:'💬', title:'Chat theo dự án', desc:'Nhắn tin thời gian thực ngay trong dự án. Không cần app ngoài.', color:'var(--gold)', bg:'rgba(217,119,6,0.1)'},
+          {icon:'✅', title:'Confirm nhiệm vụ', desc:'Thành viên xác nhận đã nhận nhiệm vụ. Leader theo dõi tiến độ rõ ràng.', color:'var(--primary-dark)', bg:'rgba(22,163,74,0.1)'},
+          {icon:'📤', title:'Nộp tài liệu', desc:'Nộp link Drive, nhận phản hồi từ nhóm trưởng ngay trên hệ thống.', color:'var(--accent)', bg:'rgba(146,64,14,0.1)'},
+          {icon:'🌐', title:'Truy cập Khách', desc:'Xem dự án công khai mà không cần đăng nhập. Chia sẻ dễ dàng.', color:'var(--gold)', bg:'rgba(217,119,6,0.1)'}
+        ];
+      %>
+      <% features.forEach(f => { %>
+        <div class="feature-card glass">
+          <div class="feature-icon" style="background:<%= f.bg %>">
+            <%= f.icon %>
+          </div>
+          <h3 style="color:<%= f.color %>;margin-bottom:0.5rem;font-size:1rem"><%= f.title %></h3>
+          <p style="color:var(--text-dim);font-size:0.85rem;line-height:1.7"><%= f.desc %></p>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+</div>
+
+<!-- CTA Section -->
+<div style="background:linear-gradient(135deg,var(--green-900),var(--green-700));padding:4rem 1.5rem;text-align:center;margin-top:2rem">
+  <h2 style="color:#fff;font-size:1.8rem;margin-bottom:0.8rem">Sẵn sàng bắt đầu?</h2>
+  <p style="color:rgba(255,255,255,0.7);margin-bottom:1.5rem">Tạo tài khoản miễn phí ngay hôm nay và quản lý nhóm hiệu quả hơn</p>
+  <div style="display:flex;gap:0.8rem;justify-content:center;flex-wrap:wrap">
+    <a href="/auth/register" class="btn btn-primary btn-lg" style="background:rgba(255,255,255,0.2);border-color:rgba(255,255,255,0.4);color:#fff">🚀 Đăng ký miễn phí</a>
+    <a href="/guest" class="btn btn-ghost btn-lg" style="border-color:rgba(255,255,255,0.3);color:rgba(255,255,255,0.8)">👀 Xem thử với tư cách Khách</a>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

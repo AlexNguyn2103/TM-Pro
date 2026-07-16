@@ -1,0 +1,53 @@
+  </div><!-- /.page-content -->
+</div><!-- /.app-main -->
+</div><!-- /.app-layout -->
+
+<!-- Mobile Bottom Navigation -->
+<% const u2 = locals.currentUser; %>
+<nav class="mobile-bottom-nav">
+  <% if (u2) { %>
+    <a href="/dashboard" class="mobile-nav-item <%= locals.title==='Dashboard'?'active':'' %>">
+      <span class="mnav-icon">🏠</span>Dashboard
+    </a>
+    <a href="/projects/new" class="mobile-nav-item">
+      <span class="mnav-icon">＋</span>Tạo
+    </a>
+    <a href="/projects/join" class="mobile-nav-item">
+      <span class="mnav-icon">🔗</span>Tham gia
+    </a>
+    <a href="/notifications" class="mobile-nav-item <%= locals.title==='Thông báo'?'active':'' %>">
+      <span class="mnav-icon">🔔</span>Thông báo
+      <% if (locals.unreadCount > 0) { %>
+        <span class="mnav-badge"><%= locals.unreadCount %></span>
+      <% } %>
+    </a>
+    <a href="/profile" class="mobile-nav-item">
+      <span class="mnav-icon">👤</span>Hồ sơ
+    </a>
+  <% } else { %>
+    <a href="/" class="mobile-nav-item <%= locals.title===undefined?'active':'' %>">
+      <span class="mnav-icon">🏠</span>Trang chủ
+    </a>
+    <a href="/guest" class="mobile-nav-item">
+      <span class="mnav-icon">🌐</span>Công khai
+    </a>
+    <a href="/auth/login" class="mobile-nav-item">
+      <span class="mnav-icon">🔑</span>Đăng nhập
+    </a>
+    <a href="/auth/register" class="mobile-nav-item">
+      <span class="mnav-icon">✨</span>Đăng ký
+    </a>
+  <% } %>
+</nav>
+
+<script>
+// Mobile notif script removed
+</script>
+
+<%# Chart.js %>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<%# Socket.io %>
+<script src="/socket.io/socket.io.js" defer></script>
+<script src="/js/main.js" defer></script>
+</body>
+</html>

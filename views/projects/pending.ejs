@@ -1,0 +1,14 @@
+<%- include('../partials/header') %>
+<%- include('../partials/navbar') %>
+<div class="container" style="padding-top:4rem;text-align:center">
+  <div style="max-width:480px;margin:0 auto">
+    <div style="font-size:4rem;margin-bottom:1rem;animation:glow-pulse 2s infinite">⏳</div>
+    <h2 style="color:var(--yellow);margin-bottom:0.5rem">Chờ duyệt</h2>
+    <p style="color:var(--text-dim);margin-bottom:2rem">
+      Yêu cầu của bạn tham gia dự án <strong style="color:var(--text-bright)"><%= project.name %></strong> đang được nhóm trưởng xem xét.
+    </p>
+    <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:2rem">Bạn sẽ nhận thông báo khi được duyệt.</p>
+    <a href="/dashboard" class="btn btn-brown">← Về Dashboard</a>
+  </div>
+</div>
+<%- include('../partials/footer') %>
